@@ -62,7 +62,7 @@ The height map are used for computing collision.
 
 Each `height/{scan_id}.pkl` contains a floor height map used for computing collision. The format is 
 
-```json
+```bash
 {
     'dim': int,             # height map dimension
     'height': np.ndarray,   # height map
@@ -97,7 +97,7 @@ The coarse path list is a node id list within the original navigation graph.
 The numpy array with shape <N, 3> stores a refined path (position in space) that is processed from the coarse path.
 We can only use the refined path for training.
 
-```json
+```bash
 [
     ([node_id_1, node_id_2, ...], np.ndarray),
     ([node_id_1, node_id_2, ...], np.ndarray),

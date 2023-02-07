@@ -186,13 +186,13 @@ coming soon.
     bash scripts/path_planning/train_ddm.sh ${EXP_NAME}
     ```
 
-### Test
+### Test (Quantitative Evaluation)
 
 ```bash
 bash scripts/path_planning/plan.sh ${CKPT}
 ```
 
-### Sample
+### Sample (Qualitative Visualization)
 
 ```bash
 bash scripts/path_planning/sample.sh ${CKPT} [OPT] [PLA]
