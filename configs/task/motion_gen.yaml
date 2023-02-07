@@ -1,0 +1,67 @@
+# task: motion generation
+name: motion_gen
+lr: 1e-4
+
+train:
+  batch_size: 32
+  num_workers: 4
+  num_epochs: 100
+  log_step: 100
+
+test:
+  batch_size: 32
+  num_workers: 4
+
+## dataset
+has_observation: false
+dataset:
+  name: LEMOMotion
+  desc: '[LEMO Motion] -- dataset used for motion generation conditioned on 3D scene'
+  modeling_keys: ['transl', 'global_orient', 'betas', 'body_pose'] #, 'left_hand_pose', 'right_hand_pose']
+  has_observation: ${task.has_observation}
+  horizon: 60
+  num_points: 32768
+  frame_interval_train: 1
+  frame_interval_test: 10
+  use_color: true
+  use_normal: false
+  start_end_dist_threshold: 0.2
+  data_dir: /home/wangzan/Data/LEMO/PROX_temporal/PROX_temporal/PROXD_temp
+  data_dir_slurm: /home/wangzan/scratch/Data/LEMO/PROX_temporal/PROX_temporal/PROXD_temp
+  smpl_dir: /home/wangzan/Data/SHADE/models_smplx_v1_1/models/
+  smpl_dir_slurm: /home/wangzan/scratch/Data/SHADE/models_smplx_v1_1/models/
+  prox_dir: /home/wangzan/Data/SHADE/PROX/
+  prox_dir_slurm: /home/wangzan/scratch/Data/SHADE/PROX/
+  vposer_dir: '/home/wangzan/Data/SHADE/V02_05/'
+  vposer_dir_slurm: '/home/wangzan/scratch/Data/SHADE/V02_05/'
+  smplx_pca_comps: 12
+  smplx_model_device: cpu
+
+  train_transforms: ['NormalizeToCenter', 'RandomRotation', 'ApplyTransformationPROXMotion', 'SMPLXTupleToArray', 'NumpyToTensor']
+  test_transforms: ['NormalizeToCenter', 'ApplyTransformationPROXMotion', 'SMPLXTupleToArray', 'NumpyToTensor']
+  transform_cfg:
+    gravity_dim: 2
+    angle: [0, 0, 1]
+    observation_frame: 1
+  
+  use_normalize: true
+  repr_type: absolute # ['absolute', 'relative']
+
+## for visualization
+visualizer:
+  name: MotionGenVisualizer
+  vis_case_num: 32
+  ksample: 2 # sample k case in each case
+  vis_denoising: false # visualize denoising process
+  save_mesh: false
+  ## visualization config used in training
+  visualize: false
+  interval: 1
+
+## for quantitative evaluation
+evaluator:
+  name: MotionGenEval
+  eval_case_num: 32
+  ksample: 20 # sample k case in each case
+  ## evaluation config
+  contact_threshold: 0.02

@@ -1,0 +1,67 @@
+# task: path planning
+name: path_planning
+lr: 1e-4
+
+train:
+  batch_size: 32
+  num_workers: 4
+  num_epochs: 100
+  log_step: 100
+
+test:
+  batch_size: 32
+  num_workers: 4
+
+## dataset
+has_observation: true # for path planning, use observation in default
+dataset:
+  name: ScanNetPath
+  desc: '[ScanNet Path] -- dataset used for path planning conditioned on 3D scene'
+  horizon: 32
+  frame_interval: 1
+  num_points: 32768
+  use_color: true
+  use_normal: false
+  data_dir: /home/wangzan/Data/SceneDiffuser/scannet_path_planning/
+  data_dir_slurm: /home/wangzan/scratch/Data/SceneDiffuser/scannet_path_planning/
+
+  use_normalize: true
+  repr_type: absolute # ['absolute', 'relative']
+  normalize_cfg:
+    absolute: [-4, 4] # unit is meter
+    relative: [-0.08, 0.08] # unit is meter
+
+  train_transforms: ['NormalizeToCenterPath', 'RandomRotationPath',  'ProjectTo2DPath', 'CreatePlanningDataPath', 'NumpyToTensorPath']
+  test_transforms: ['NormalizeToCenterPath', 'ProjectTo2DPath', 'CreatePlanningDataPath', 'NumpyToTensorPath']
+  transform_cfg:
+    gravity_dim: 2
+    angle: [0, 0, 1]
+    observation_frame: 1 # only support 1 currently
+
+## for visualization
+visualizer:
+  name: PathPlanningRenderingVisualizer
+  vis_case_num: 32
+  ksample: 2 # sample k case in each case
+  vis_denoising: false # visualize denoising process
+  scannet_mesh_dir: ${task.dataset.data_dir}
+  ## visualization config used in training
+  visualize: false
+  interval: 1
+
+## for planning task
+env:
+  name: PathPlanningEnvWrapper
+  max_sample_each_step: 1 # currently only support max_sample_each_step=1
+  inpainting_horizon: 32
+  max_trajectory_length: 150
+  arrive_threshold: 0.15
+  eval_case_num: 320
+  vis_case_num: 32
+
+  robot_radius: 0.08
+  robot_bottom: 0.1
+  robot_top: 0.6
+  env_adaption: true
+
+  scannet_mesh_dir: ${task.dataset.data_dir}

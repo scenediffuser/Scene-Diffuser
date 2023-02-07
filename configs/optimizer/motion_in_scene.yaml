@@ -1,0 +1,35 @@
+name: MotionInSceneOptimizer
+
+scale: 1.0
+scale_type: 'normal' # ['normal', 'div_var']
+
+frame_interval: 10
+contact: true
+contact_weight: 1.0
+contact_degree_threshold: 15
+collision: true
+collision_weight: 1.0
+vposer: true
+vposer_weight: 1.0
+smoothness: true
+smoothness_weight: 1.0
+clip_grad_by_value:
+  min: -0.1
+  max: 0.1
+
+modeling_keys: ${task.dataset.modeling_keys}
+num_pca_comps: ${task.dataset.smplx_pca_comps}
+smpl_dir: ${task.dataset.smpl_dir}
+smpl_dir_slurm: ${task.dataset.smpl_dir_slurm}
+vposer_dir: ${task.dataset.vposer_dir}
+vposer_dir_slurm: ${task.dataset.vposer_dir}
+prox_dir: ${task.dataset.prox_dir}
+prox_dir_slurm: ${task.dataset.prox_dir_slurm}
+gravity_dim: ${task.dataset.transform_cfg.gravity_dim}
+
+contact_body_part: ['back','gluteus','L_Hand','R_Hand','L_Leg','R_Leg','thighs']
+
+
+
+
+

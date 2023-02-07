@@ -1,0 +1,28 @@
+## config/default.yaml
+hydra:
+  run:
+    dir: ${exp_dir}
+  output_subdir: null
+
+defaults:
+  - _self_
+  - diffuser: null
+  - model: null
+  - task: null
+  - optimizer: null
+  - planner: null
+
+output_dir: outputs
+exp_name: default
+exp_dir: ${output_dir}/${now:%Y-%m-%d_%H-%M-%S}_${exp_name}
+tb_dir: ${exp_dir}/tb_logs
+vis_dir: ${exp_dir}/visual
+ckpt_dir: ${exp_dir}/ckpts
+
+slurm: false
+gpu: 0
+
+## for saving model
+save_model_interval: 1
+save_model_seperately: false
+save_scene_model: false # save scene model or not, important!!!

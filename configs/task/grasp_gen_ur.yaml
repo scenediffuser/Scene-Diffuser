@@ -1,0 +1,42 @@
+# task: pose generation
+name: grasp_gen
+lr: 1e-4
+eval_interval: 1
+eval_visualize: 1
+
+train:
+  batch_size: 64
+#  num_workers: 4
+  num_workers: 0
+  num_epochs: 1000
+  log_step: 100
+
+test:
+  batch_size: 2
+  num_workers: 0
+
+dataset:
+  name: MultiDexShadowHandUR
+  desc: '[MultiDex ShadowHand] -- dataset used for grasp pose generation condition on 3D object'
+  modeling_keys: ['allDoFs']
+  num_points: 2048
+  frame_interval_train: 5
+  frame_interval_test: 10
+  device: cuda
+  use_color: false
+  use_normal: false
+  is_downsample: true
+#  data_dir: /home/wangzan/Data/LEMO/PROX_temporal/PROX_temporal/PROXD_temp
+  data_dir: /home/puhao/data/MultiDex_UR/shadowhand/
+  data_dir_slurm: /home/lipuhao/data/MultiDex_UR/shadowhand/
+  scene_path: /home/puhao/data/MultiDex_UR/object_pcds.pkl
+  scene_path_slurm: /home/lipuhao/data/MultiDex_UR/object_pcds.pkl
+
+  train_transforms: ['NumpyToTensor']
+  test_transforms: ['NumpyToTensor']
+  transform_cfg: {}
+
+visualizer:
+  name: GraspGenVisualizer
+  visualize: false
+  ksample: 4

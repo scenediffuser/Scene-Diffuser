@@ -1,0 +1,12 @@
+name: GreedyPathPlanner
+
+scale: 1.0
+scale_type: 'normal' # ['normal', 'div_var']
+
+greedy_type: 'last_frame_l1' # ['last_frame_l1', 'all_frame_l1', 'last_frame_exp', 'all_frame_exp', 'closest_l1']
+
+clip_grad_by_value:
+  min: -0.1
+  max: 0.1
+
+robot_radius: ${task.env.robot_radius}

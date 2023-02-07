@@ -1,0 +1,17 @@
+name: GraspWithObject
+
+scale: 1.0
+
+palm_alignment: true
+palm_alignment_weight: 1.0
+clip_grad_by_value:
+  min: -0.1
+  max: 0.1
+
+batch_size: ${task.test.batch_size}
+modeling_keys: ${task.dataset.modeling_keys}
+
+
+
+
+

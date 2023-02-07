@@ -1,0 +1,18 @@
+name: PathInSceneOptimizer
+
+scale: 1.0
+scale_type: 'normal' # ['normal', 'div_var']
+
+collision: true
+collision_weight: 1.0
+continuity: true
+continuity_weight: 1.0
+continuity_step: 10
+
+robot_radius: ${task.env.robot_radius}
+robot_bottom: ${task.env.robot_bottom}
+robot_top: ${task.env.robot_top}
+
+clip_grad_by_value:
+  min: -0.1
+  max: 0.1
