@@ -43,36 +43,23 @@ We introduce SceneDiffuser, a conditional generative model for 3D scene understa
 
 ## Setup
 
-1. Install `pytorch`
-
-    Notes: we run our code with pytorch1.11 and cuda11.3
-
-2. Install `pytorch3d` GPU version
+1. Create a new `conda` environemnt and activate it
 
     ```bash
-    pip install "git+https://github.com/facebookresearch/pytorch3d.git@stable"
+    conda create -n 3d python=3.8
+    conda activate 3d
     ```
 
-3. Install `chamfer_distance`
+2. Install dependent libraries with `pip`
 
     ```bash
-    pip install git+'https://github.com/otaheri/chamfer_distance'
+    pip install -r pre-requirements.txt
+    pip install -r requirements.txt
     ```
 
-4. Some packages that need to be installed from source code:
+    - We use `pytorch1.11` and `cuda11.3`, modify `pre-requirements.txt` to install [other versions](https://pytorch.org/get-started/previous-versions/) of `pytorch`
 
-- [pointops_cuda](https://github.com/POSTECH-CVLab/point-transformer)
-    ```bash
-    cd point-transformer/lib/pointops/
-    python setup.py install
-    ```
-- [pytorch_kinematics](https://github.com/UM-ARM-Lab/pytorch_kinematics)
-- [urdf_parser_py](https://github.com/ros/urdf_parser_py)
-- [human_body_prior](https://github.com/nghorbani/human_body_prior)
-
-5. Other libraries that can be directly installed with `pip`, such as, omegaconf, loguru, hydra-core, numpy, tqdm, trimesh, einops, plotly, networkx, natsort, pillow, opencv-python, pyquaternion, pyrender, tabulate, transforms3d, ...
-
-## Data & CheckPoints
+## Data & Checkpoints
 
 ### 1. Data
 
@@ -84,7 +71,7 @@ But, you also need to download some official released data assets which are not 
 
 - `dataset.*_dir`/`dataset.*_path` configurations in `task/*.yaml` for the path of data assets
 
-### 2. CheckPoints
+### 2. Checkpoints
 
 Download our [pre-trained model](https://drive.google.com/drive/folders/1CKJER3CnVh0o8cwlN8a2c0kQ6HTEqvqj?usp=sharing) and unzip them into a folder, e.g., `./outputs/`.
 
@@ -132,7 +119,7 @@ bash scripts/pose_gen/sample.sh ${CKPT} [OPT]
 
 ## Task-2: Human Motion Generation in 3D Scenes
 
-**The default configuration is for motion generation without observation. If you want to explore the setting of motion generation with start observation, please change the `task.has_observation` to `true` in all the scripts in folder `./scripts/motion_gen/`.**
+**The default configuration is motion generation without observation. If you want to explore the setting of motion generation with start observation, please change the `task.has_observation` to `true` in all the scripts in folder `./scripts/motion_gen/`.**
 
 ### Train
 

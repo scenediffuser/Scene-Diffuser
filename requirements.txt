@@ -1,0 +1,26 @@
+-e git+https://github.com/Silverster98/pytorch_kinematics#egg=pytorch_kinematics
+git+https://github.com/facebookresearch/pytorch3d.git@v0.7.0
+git+https://github.com/otaheri/chamfer_distance.git@d2b524309db114d0f7ce18be6c01b3802cde9791
+git+https://github.com/Silverster98/pointops
+git+https://github.com/nghorbani/human_body_prior
+urdf-parser-py==0.0.4
+einops==0.4.1
+hydra-core==1.2.0
+loguru==0.6.0
+matplotlib==3.5.1
+natsort==8.2.0
+networkx==2.8.6
+omegaconf==2.2.2
+opencv-python==4.6.0.66
+Pillow==9.0.1
+plotly==5.11.0
+protobuf==3.19.4
+pyquaternion==0.9.9
+pyrender==0.1.45
+smplx==0.1.28
+tabulate==0.8.10
+tensorboard==2.8.0
+tqdm==4.62.3
+transforms3d==0.4.1
+transformations==2022.9.26
+trimesh==3.12.7

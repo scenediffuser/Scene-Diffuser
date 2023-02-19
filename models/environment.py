@@ -219,7 +219,7 @@ class MP3DPathPlanningEnvCore():
             
             actions_rotate = torch.mm(
                 rot_mat, # <2, 2>
-                actions.squeeze().t() # <2, B>
+                actions.squeeze(1).t() # <2, B>
             ).t().unsqueeze(1) # <B, 1, D>
             
             action_valid_mask = self.verify_actions(actions_rotate)
@@ -437,6 +437,113 @@ class PathPlanningEnvWrapper():
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         with open(save_path, 'w') as fp:
             json.dump(res, fp)
+
+@ENV.register()
+@torch.no_grad()
+class PathPlanningEnvWrapperHF():
+    def __init__(self, cfg: DictConfig) -> None:
+        """ Path palnning environment class for path planning task.
+
+        Args:
+            cfg: environment configuration
+        """
+        self.max_sample_each_step = cfg.max_sample_each_step
+        self.inpainting_horizon = cfg.inpainting_horizon
+        self.max_trajectory_length = cfg.max_trajectory_length
+        self.arrive_threshold = cfg.arrive_threshold
+
+        self.robot_radius = cfg.robot_radius
+        self.robot_bottom = cfg.robot_bottom
+        self.robot_top = cfg.robot_top
+        self.env_adaption = cfg.env_adaption
+
+        self.scannet_mesh_dir = cfg.scannet_mesh_dir
+
+    def run(
+        self,
+        model: torch.nn.Module,
+        dataloader: torch.utils.data.DataLoader,
+    ) -> None:
+        """ Palnning within the environment
+
+        Args:
+            model: diffusion model
+            dataloader: test dataloader
+        """
+        model.eval()
+        device = model.device
+
+        for i, data in enumerate(dataloader):
+            for key in data:
+                if torch.is_tensor(data[key]):
+                    data[key] = data[key].to(device)
+            data['normalizer'] = dataloader.dataset.normalizer
+            data['repr_type'] = dataloader.dataset.repr_type
+            
+            env = MP3DPathPlanningEnvCore(
+                data,
+                robot_radius=self.robot_radius,
+                robot_bottom=self.robot_bottom,
+                robot_top=self.robot_top,
+                arrive_threshold=self.arrive_threshold,
+                max_trajectory_length=self.max_trajectory_length,
+                env_adaption=self.env_adaption,
+                inpainting_horizon=self.inpainting_horizon,
+            )
+
+            for i in range(self.max_trajectory_length):
+                print(i)
+                outputs = model.sample(data, k=self.max_sample_each_step) # <B, k, T, L, D>
+
+                ## the model outputs have the shape <Batch, k_sample, denoising_step_T, horizon, dim>
+                ## we will sample valid action from the k_sample
+                ## use the second frame of the horizon as action, the first frame is the observation
+                O = data['start'].shape[1] + (data['obser'].shape[1] if 'obser' in data else 0)
+                assert torch.sum(outputs[:, 0:1, -1, O-1, :] - env.state) < 1e-6
+
+                pred_next_state = outputs[:, :, -1, O, :] # <B, k, D>
+                actions = pred_next_state - env.state # <B, k, D>
+
+                print(actions.shape)
+                env.step(i + 1, actions) # execute actions
+
+                ## update observation
+                start, obser = env.observation_queue.obser()
+                data['start'] = start
+                if obser is not None:
+                    data['obser'] = obser
+
+                if env.all_end():
+                    break
+            
+            scene_id = data['scene_id']
+            trans_mat = data['trans_mat']
+            target = env.get_target()
+            trajectory = env.get_trajectory()
+            trajectory_length = env.get_trajectory_length()
+            i = 0
+                
+            ## load scene mesh and camera pose
+            scene_mesh = trimesh.load(os.path.join(
+                self.scannet_mesh_dir, 'mesh', f'{scene_id[i]}_vh_clean_2.ply'))
+            scene_mesh.apply_transform(trans_mat[i])
+            camera_pose = np.eye(4)
+            camera_pose[0:3, -1] = np.array([0, 0, 10])
+            
+            tar = target[i].cpu().numpy()   # <B, 2>
+            path = trajectory[i].cpu().numpy() # <B, T, 2>
+            length = trajectory_length[i].item()
+            path = path[0:length+1]
+
+            img = render_scannet_path(
+                {'scene': scene_mesh,
+                'target': create_trimesh_node(tar, color=np.array([0, 255, 0], dtype=np.uint8)),
+                'path': create_trimesh_nodes_path(path, merge=True)},
+                camera_pose=camera_pose,
+                save_path=None
+            )
+
+            return ([img], length)   
 
 def create_enviroment(cfg: DictConfig) -> nn.Module:
     """ Create a planning environment for planning task

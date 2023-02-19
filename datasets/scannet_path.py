@@ -22,14 +22,17 @@ class ScanNetPath(Dataset):
         self.data_dir = cfg.data_dir_slurm if self.slurm else cfg.data_dir
         self._load_split()
 
-        if self.phase == 'train':
-            self.split = self._train_split
-        elif self.phase == 'test':
-            self.split = self._test_split
-        elif self.phase == 'all':
-            self.split = self._all_split
+        if 'specific_scene' in kwargs:
+            self.split = [kwargs['specific_scene']]
         else:
-            raise Exception('Unsupported phase.')
+            if self.phase == 'train':
+                self.split = self._train_split
+            elif self.phase == 'test':
+                self.split = self._test_split
+            elif self.phase == 'all':
+                self.split = self._all_split
+            else:
+                raise Exception('Unsupported phase.')
         
         self.num_points = cfg.num_points
         self.use_color = cfg.use_color

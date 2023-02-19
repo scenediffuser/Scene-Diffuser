@@ -65,10 +65,14 @@ def render_prox_scene(meshes: Dict, camera_pose: np.ndarray, save_path: str, add
     color = color.astype(np.float32) / 255.0
     img = Image.fromarray((color * 255).astype(np.uint8))
 
+    r.delete()
+    if save_path is None:
+        return img
+
     os.makedirs(os.path.dirname(save_path), exist_ok = True)
     img.save(save_path)
     
-    r.delete()
+    # r.delete()
 
 def frame2video(frames_path: Any, video: str, start: int=0, framerate=30) -> None:
     """ Convert image frames to video, use ffmpeg to implement the convertion.
@@ -297,10 +301,14 @@ def render_scannet_path(meshes: Dict, camera_pose: np.ndarray, save_path: str, a
     color = color.astype(np.float32) / 255.0
     img = Image.fromarray((color * 255).astype(np.uint8))
     
+    r.delete()
+    if save_path is None:
+        return img
+    
     os.makedirs(os.path.dirname(save_path), exist_ok = True)
     img.save(save_path)
 
-    r.delete()
+    # r.delete()
 
 if __name__ == '__main__':
     nodes = np.linspace(np.array([0,0,0]), np.array([5,5,5]), 32)

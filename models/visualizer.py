@@ -6,6 +6,7 @@ import trimesh
 import pickle
 from omegaconf import DictConfig
 from plotly import graph_objects as go
+from typing import Any
 
 from utils.misc import random_str
 from utils.registry import Registry
@@ -402,6 +403,134 @@ class GraspGenVisualizer():
                 cnt += 1
                 if cnt >= vis_cnt:
                     break
+
+@VISUALIZER.register()
+@torch.no_grad()
+class PoseGenVisualizerHF():
+    def __init__(self, cfg: DictConfig) -> None:
+        """ Visual evaluation class for pose generation task.
+
+        Args:
+            cfg: visuzalizer configuration
+        """
+        self.ksample = cfg.ksample
+
+    def visualize(
+        self, 
+        model: torch.nn.Module, 
+        dataloader: torch.utils.data.DataLoader, 
+    ) -> Any:
+        """ Visualize method
+
+        Args:
+            model: diffusion model
+            dataloader: test dataloader
+        
+        Return:
+            Results for gradio rendering.
+        """
+        model.eval()
+        device = model.device
+
+        for data in dataloader:
+            for key in data:
+                if torch.is_tensor(data[key]):
+                    data[key] = data[key].to(device)
+            data['normalizer'] = dataloader.dataset.normalizer
+            
+            outputs = model.sample(data, k=self.ksample) # <B, k, T, D>
+            
+            i = 0
+            scene_id = data['scene_id'][i]
+            cam_tran = data['cam_tran'][i]
+            gender = data['gender'][i]
+            
+            origin_cam_tran = data['origin_cam_tran'][i]
+            scene_trans = cam_tran @ np.linalg.inv(origin_cam_tran) # scene_T @ origin_cam_T = cur_cam_T
+            scene_mesh = dataloader.dataset.scene_meshes[scene_id].copy()
+            scene_mesh.apply_transform(scene_trans)
+
+            ## calculate camera pose
+            camera_pose = np.eye(4)
+            camera_pose = np.array([1.0, -1.0, -1.0, 1.0]).reshape(-1, 1) * camera_pose
+            camera_pose = cam_tran @ camera_pose
+
+            ## generate smplx bodies in last denoising step
+            ## only visualize the body in last step, but visualize multi bodies
+            smplx_params = outputs[i, :, -1, ...] # <k, ...>
+            body_verts, body_faces, body_joints = dataloader.dataset.SMPLX.run(smplx_params, gender)
+            body_verts = body_verts.numpy()
+
+            res_images = []
+            for j in range(len(body_verts)):
+                body_mesh = trimesh.Trimesh(vertices=body_verts[j], faces=body_faces)
+                ## render generated body separately
+                img = render_prox_scene({'scenes': [scene_mesh], 'bodies': [body_mesh]}, camera_pose, None)
+                res_images.append(img)
+            return res_images
+
+@VISUALIZER.register()
+@torch.no_grad()
+class PathPlanningRenderingVisualizerHF():
+    def __init__(self, cfg: DictConfig) -> None:
+        """ Visual evaluation class for path planning task. Directly rendering images.
+
+        Args:
+            cfg: visuzalizer configuration
+        """
+        self.ksample = cfg.ksample
+        self.scannet_mesh_dir = cfg.scannet_mesh_dir
+    
+    def visualize(
+        self,
+        model: torch.nn.Module,
+        dataloader: torch.utils.data.DataLoader,
+    ) -> None:
+        """ Visualize method
+
+        Args:
+            model: diffusion model
+            dataloader: test dataloader
+        """
+        model.eval()
+        device = model.device
+
+        for data in dataloader:
+            for key in data:
+                if torch.is_tensor(data[key]):
+                    data[key] = data[key].to(device)
+            data['normalizer'] = dataloader.dataset.normalizer
+            data['repr_type'] = dataloader.dataset.repr_type
+            
+            outputs = model.sample(data, k=self.ksample) # <B, k, T, L, D>
+
+            scene_id = data['scene_id']
+            trans_mat = data['trans_mat']
+            target = data['target'].cpu().numpy()
+            i = 0
+
+            ## load scene and camera pose
+            scene_mesh = trimesh.load(os.path.join(
+                self.scannet_mesh_dir, 'mesh', f'{scene_id[i]}_vh_clean_2.ply'))
+            scene_mesh.apply_transform(trans_mat[i])
+            camera_pose = np.eye(4)
+            camera_pose[0:3, -1] = np.array([0, 0, 10])
+
+            sequences = outputs[i, :, -1, ...] # <k, horizon, 2>
+            res_images = []
+            for t in range(len(sequences)):
+                path = sequences[t].cpu().numpy() # <horizon, 2>
+
+                img = render_scannet_path(
+                    {'scene': scene_mesh,
+                    'target': create_trimesh_node(target[i], color=np.array([0, 255, 0], dtype=np.uint8)),
+                    'path': create_trimesh_nodes_path(path, merge=True)},
+                    camera_pose=camera_pose,
+                    save_path=None
+                )
+                res_images.append(img)
+            
+            return res_images
 
 def create_visualizer(cfg: DictConfig) -> nn.Module:
     """ Create a visualizer for visual evaluation

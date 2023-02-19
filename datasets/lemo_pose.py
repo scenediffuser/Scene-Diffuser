@@ -34,14 +34,17 @@ class LEMOPose(Dataset):
         super(LEMOPose, self).__init__()
         self.phase = phase
         self.slurm = slurm
-        if self.phase == 'train':
-            self.split = self._train_split
-        elif self.phase == 'test':
-            self.split = self._test_split
-        elif self.phase == 'all':
-            self.split = self._all_split
+        if 'specific_scene' in kwargs:
+            self.split = [kwargs['specific_scene']]
         else:
-            raise Exception('Unsupported phase.')
+            if self.phase == 'train':
+                self.split = self._train_split
+            elif self.phase == 'test':
+                self.split = self._test_split
+            elif self.phase == 'all':
+                self.split = self._all_split
+            else:
+                raise Exception('Unsupported phase.')
         self.frame_interval = cfg.frame_interval_train if self.phase == 'train' else cfg.frame_interval_test # interval sampling
         self.modeling_keys = cfg.modeling_keys
         self.num_points = cfg.num_points
@@ -63,7 +66,8 @@ class LEMOPose(Dataset):
         self.normalizer = None
         self.repr_type = 'absolute'
         if cfg.use_normalize:
-            with open('./datasets/lemo/normalization.pkl', 'rb') as fp:
+            cur_dir = os.path.dirname(os.path.abspath(__file__))
+            with open(os.path.join(cur_dir, 'lemo/normalization.pkl'), 'rb') as fp:
                 data = pickle.load(fp)
             xmin = data['xmin'].astype(np.float32)
             xmax = data['xmax'].astype(np.float32)
