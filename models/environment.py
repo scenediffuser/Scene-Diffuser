@@ -492,7 +492,6 @@ class PathPlanningEnvWrapperHF():
             )
 
             for i in range(self.max_trajectory_length):
-                print(i)
                 outputs = model.sample(data, k=self.max_sample_each_step) # <B, k, T, L, D>
 
                 ## the model outputs have the shape <Batch, k_sample, denoising_step_T, horizon, dim>
@@ -504,7 +503,6 @@ class PathPlanningEnvWrapperHF():
                 pred_next_state = outputs[:, :, -1, O, :] # <B, k, D>
                 actions = pred_next_state - env.state # <B, k, D>
 
-                print(actions.shape)
                 env.step(i + 1, actions) # execute actions
 
                 ## update observation
