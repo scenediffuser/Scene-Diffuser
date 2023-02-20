@@ -9,7 +9,12 @@ from natsort import natsorted
 import networkx as nx
 
 if os.environ.get('SLURM') is None:
-    os.environ["PYOPENGL_PLATFORM"] = "egl"
+    if os.environ.get('RENDERING_BACKEND') == "egl":
+        os.environ["PYOPENGL_PLATFORM"] = "egl"
+    elif os.environ.get('RENDERING_BACKEND') == 'osmesa':
+        os.environ["PYOPENGL_PLATFORM"] = "osmesa"
+    else:
+        pass
     import pyrender
 
 def render_prox_scene(meshes: Dict, camera_pose: np.ndarray, save_path: str, add_axis: bool=True) -> None:
