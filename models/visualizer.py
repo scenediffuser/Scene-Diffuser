@@ -471,6 +471,74 @@ class PoseGenVisualizerHF():
 
 @VISUALIZER.register()
 @torch.no_grad()
+class MotionGenVisualizerHF():
+    def __init__(self, cfg: DictConfig) -> None:
+        """ Visual evaluation class for motion generation task.
+
+        Args:
+            cfg: visuzalizer configuration
+        """
+        self.ksample = cfg.ksample
+    
+    def visualize(
+        self, 
+        model: torch.nn.Module, 
+        dataloader: torch.utils.data.DataLoader, 
+    ) -> None:
+        """ Visualize method
+
+        Args:
+            model: diffusion model
+            dataloader: test dataloader
+        
+        Return:
+            Results for gradio rendering.
+        """
+        model.eval()
+        device = model.device
+
+        for data in dataloader:
+            for key in data:
+                if torch.is_tensor(data[key]):
+                    data[key] = data[key].to(device)
+            data['normalizer'] = dataloader.dataset.normalizer
+            data['repr_type'] = dataloader.dataset.repr_type
+            
+            outputs = model.sample(data, k=self.ksample) # <B, k, T, L, D>
+
+            i = 0
+            scene_id = data['scene_id'][i]
+            cam_tran = data['cam_tran'][i]
+            gender = data['gender'][i]
+
+            origin_cam_tran = data['origin_cam_tran'][i]
+            scene_trans = cam_tran @ np.linalg.inv(origin_cam_tran) # scene_T @ origin_cam_T = cur_cam_T
+            scene_mesh = dataloader.dataset.scene_meshes[scene_id].copy()
+            scene_mesh.apply_transform(scene_trans)
+
+            ## calculate camera pose
+            camera_pose = np.eye(4)
+            camera_pose = np.array([1.0, -1.0, -1.0, 1.0]).reshape(-1, 1) * camera_pose
+            camera_pose = cam_tran @ camera_pose
+
+            ## generate smplx bodies in all denoising step
+            ## only visualize the body in last step, visualize with gif
+            smplx_params = outputs[i, :, -1, ...] # <k, ...>
+            body_verts, body_faces, body_joints = dataloader.dataset.SMPLX.run(smplx_params, gender)
+            body_verts = body_verts.numpy()
+            
+            res_ksamples = []
+            for k in range(len(body_verts)):
+                res_images = []
+                for j, body in enumerate(body_verts[k]):
+                    body_mesh = trimesh.Trimesh(vertices=body, faces=body_faces)
+                    img = render_prox_scene({'scenes': [scene_mesh], 'bodies': [body_mesh]}, camera_pose, None)
+                    res_images.append(img)
+                res_ksamples.append(res_images)
+            return res_ksamples
+
+@VISUALIZER.register()
+@torch.no_grad()
 class PathPlanningRenderingVisualizerHF():
     def __init__(self, cfg: DictConfig) -> None:
         """ Visual evaluation class for path planning task. Directly rendering images.

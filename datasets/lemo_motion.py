@@ -34,14 +34,17 @@ class LEMOMotion(Dataset):
         super(LEMOMotion, self).__init__()
         self.phase = phase
         self.slurm = slurm
-        if self.phase == 'train':
-            self.split = self._train_split
-        elif self.phase == 'test':
-            self.split = self._test_split
-        elif self.phase == 'all':
-            self.split = self._all_split
+        if 'specific_scene' in kwargs:
+            self.split = [kwargs['specific_scene']]
         else:
-            raise Exception('Unsupported phase.')
+            if self.phase == 'train':
+                self.split = self._train_split
+            elif self.phase == 'test':
+                self.split = self._test_split
+            elif self.phase == 'all':
+                self.split = self._all_split
+            else:
+                raise Exception('Unsupported phase.')
         self.horizon = cfg.horizon
         self.frame_interval = cfg.frame_interval_train if self.phase == 'train' else cfg.frame_interval_test # interval sampling
         self.modeling_keys = cfg.modeling_keys
