@@ -42,10 +42,6 @@ class SMPLXTupleToArray(object):
         modeling_keys = kwargs['modeling_keys'] if 'modeling_keys' in kwargs else None
         data['x'] = convert_smplx_parameters_format(data['x'], 'array', modeling_keys)
 
-        ## copy start observation
-        if 'motion' in kwargs and kwargs['motion']:
-            data['start'] = data['x'][0:self.observation_frame].copy()
-
         ## convert repr type
         if 'repr_type' in kwargs:
             if kwargs['repr_type'] == 'absolute':
@@ -64,6 +60,10 @@ class SMPLXTupleToArray(object):
         if 'normalizer' in kwargs and kwargs['normalizer'] is not None:
             normalizer = kwargs['normalizer']
             data['x'] = normalizer.normalize(data['x'])
+        
+        ## copy start observation
+        if 'motion' in kwargs and kwargs['motion']:
+            data['start'] = data['x'][0:self.observation_frame].copy()
 
         return data
 
