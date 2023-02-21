@@ -69,14 +69,15 @@ class LEMOMotion(Dataset):
         self.normalizer = None
         self.repr_type = cfg.repr_type
         if cfg.use_normalize:
+            cur_dir = os.path.dirname(os.path.abspath(__file__))
             if self.repr_type == 'absolute':
-                with open('./datasets/lemo/normalization.pkl', 'rb') as fp:
+                with open(os.path.join(cur_dir, 'lemo/normalization.pkl'), 'rb') as fp:
                     data = pickle.load(fp)
                 xmin = data['xmin'].astype(np.float32)
                 xmax = data['xmax'].astype(np.float32)
                 self.normalizer = NormalizerPoseMotion((xmin, xmax))
             elif self.repr_type == 'relative':
-                with open('./datasets/lemo/normalization_relative_v2.pkl', 'rb') as fp:
+                with open(os.path.join(cur_dir, 'lemo/normalization_relative_v2.pkl'), 'rb') as fp:
                     data = pickle.load(fp)
                 xmin = data['xmin'].astype(np.float32)
                 xmax = data['xmax'].astype(np.float32)
@@ -84,7 +85,7 @@ class LEMOMotion(Dataset):
                 ## in relative repr and not has observation setting, we need to model the first frame
                 ## which is represented in absolute representation.
                 if not self.has_observation:
-                    with open('./datasets/lemo/normalization.pkl', 'rb') as fp:
+                    with open(os.path.join(cur_dir, 'lemo/normalization.pkl'), 'rb') as fp:
                         data = pickle.load(fp)
                     abs_xmin = data['xmin']
                     abs_xmax = data['xmax']
