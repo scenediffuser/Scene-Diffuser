@@ -4,10 +4,10 @@
     <a href='https://arxiv.org/abs/2301.06015'>
       <img src='https://img.shields.io/badge/Paper-arXiv-green?style=plastic&logo=arXiv&logoColor=green' alt='Paper arXiv'>
     </a>
-    <a href=''>
+    <a href='https://scenediffuser.github.io/'>
       <img src='https://img.shields.io/badge/Project-Page-blue?style=plastic&logo=Google%20chrome&logoColor=blue' alt='Project Page'>
     </a>
-    <a href=''>
+    <a href='https://huggingface.co/spaces/SceneDiffuser/SceneDiffuserDemo'>
       <img src='https://img.shields.io/badge/Demo-HuggingFace-yellow?style=plastic&logo=AirPlay%20Video&logoColor=yellow' alt='HuggingFace'>
     </a>
     <a href='https://drive.google.com/drive/folders/1CKJER3CnVh0o8cwlN8a2c0kQ6HTEqvqj?usp=sharing'>
