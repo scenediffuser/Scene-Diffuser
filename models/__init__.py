@@ -5,3 +5,4 @@ from .optimizer.grasp_with_object import GraspWithObject
 from .optimizer.motion_in_scene import MotionInSceneOptimizer
 from .optimizer.path_in_scene import PathInSceneOptimizer
 from .planner.pathplanning import GreedyPathPlanner
+from .planner.fk2planning import GreedyFK2Planner

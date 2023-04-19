@@ -1,22 +1,25 @@
 # task: pose generation
-name: grasp_gen
+name: grasp_gen_ur
 lr: 1e-4
 eval_interval: 1
 eval_visualize: 1
 
 train:
-  batch_size: 64
+  batch_size: 128
 #  num_workers: 4
   num_workers: 0
-  num_epochs: 1000
+  num_epochs: 3000
   log_step: 100
 
 test:
-  batch_size: 2
+  epoch: null
+  batch_size: 32
   num_workers: 0
 
 dataset:
   name: MultiDexShadowHandUR
+  normalize_x: true
+  normalize_x_trans: true
   desc: '[MultiDex ShadowHand] -- dataset used for grasp pose generation condition on 3D object'
   modeling_keys: ['allDoFs']
   num_points: 2048
@@ -26,17 +29,18 @@ dataset:
   use_color: false
   use_normal: false
   is_downsample: true
-#  data_dir: /home/wangzan/Data/LEMO/PROX_temporal/PROX_temporal/PROXD_temp
-  data_dir: /home/puhao/data/MultiDex_UR/shadowhand/
-  data_dir_slurm: /home/lipuhao/data/MultiDex_UR/shadowhand/
-  scene_path: /home/puhao/data/MultiDex_UR/object_pcds.pkl
-  scene_path_slurm: /home/lipuhao/data/MultiDex_UR/object_pcds.pkl
+  asset_dir: /home/wangzan/Data/SceneDiffuser/grasp_and_armmotion/datasets/MultiDex_UR/
+  asset_dir_slurm: /home/wangzan/Data/SceneDiffuser/grasp_and_armmotion/datasets/MultiDex_UR/
 
   train_transforms: ['NumpyToTensor']
   test_transforms: ['NumpyToTensor']
   transform_cfg: {}
 
 visualizer:
-  name: GraspGenVisualizer
+  name: GraspGenURVisualizer
+  ksample: 64 # sample k case in each case
+  vis_denoising: false # visualize denoising process
+  save_mesh: false
+  ## visualization config used in training
   visualize: false
-  ksample: 4
+  interval: 1

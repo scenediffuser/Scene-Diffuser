@@ -3,6 +3,19 @@ import numpy as np
 import transforms3d
 
 
+def random_rot(device='cuda'):
+    rot_angles = np.random.random(3) * np.pi * 2
+    theta_x, theta_y, theta_z = rot_angles[0], rot_angles[1], rot_angles[2]
+    Rx = torch.tensor([[1, 0, 0], [0, np.cos(theta_x), -np.sin(theta_x)], [0, np.sin(theta_x), np.cos(theta_x)]]).to(device)
+    Ry = torch.tensor([[np.cos(theta_y), 0, np.sin(theta_y)], [0, 1, 0], [-np.sin(theta_y), 0, np.cos(theta_y)]]).to(device)
+    Rz = torch.tensor([[np.cos(theta_z), -np.sin(theta_z), 0], [np.sin(theta_z), np.cos(theta_z), 0], [0, 0, 1]]).to(device)
+    return (Rx @ Ry @ Rz).clone().detach()  # [3, 3]
+
+
+def rot_to_orthod6d(rot):
+    return rot.transpose(1, 2)[:, :2].reshape([-1, 6])
+
+
 def get_rot6d_from_rot3d(rot3d):
     global_rotation = np.array(transforms3d.euler.euler2mat(rot3d[0], rot3d[1], rot3d[2]))
     return global_rotation.T.reshape(9)[:6]

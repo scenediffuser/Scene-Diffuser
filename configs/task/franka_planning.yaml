@@ -1,0 +1,55 @@
+# task: franka motion generation
+name: franka_planning
+lr: 1e-4
+eval_interval: 1
+eval_visualize: 1
+
+train:
+  batch_size: 32
+  num_workers: 4
+  num_epochs: 5000
+  log_step: 100
+
+test:
+  epoch: null
+  batch_size: 16
+  num_workers: 0
+
+has_observation: true # for franka planing, use observation in default
+dataset:
+  planner_batch_size: ${task.test.batch_size}
+  name: FK2Plan
+  normalize_x: true
+  desc: '[FK2Plan] -- dataset used for forward-kinematics franka planning generation condition on 3D scene'
+  horizon: 64
+  modeling_keys: ['allDoFs']
+  num_points: 4096
+  frame_interval: 16
+  sample_trajs_per_scene: 2
+  sample_frame_interval: 32
+  device: cuda
+  use_color: false
+  use_normal: false
+  is_downsample: true
+  data_dir: /home/wangzan/Data/SceneDiffuser/grasp_and_armmotion/datasets/FK2PlanDataset
+  data_dir_slurm: /home/wangzan/Data/SceneDiffuser/grasp_and_armmotion/datasets/FK2PlanDataset
+
+  train_transforms: ['NumpyToTensorPath']
+  test_transforms: ['NumpyToTensorPath']
+  transform_cfg: {}
+
+visualizer:
+  name: FK2PlanVisualizer
+  visualize: false
+  ksample: 2
+  horizon: ${task.dataset.horizon}
+  cnt: 40
+
+## for planning task
+env:
+  name: FK2PlanningEnvWrapper
+  max_sample_each_step: 1 # currently only support max_sample_each_step=1
+  max_trajectory_length: 300
+  arrive_threshold: 0.2
+  sims_per_step: 3
+  eval_case_num_per_scene: 64

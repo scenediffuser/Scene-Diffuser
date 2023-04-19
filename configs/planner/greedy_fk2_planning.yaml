@@ -1,0 +1,9 @@
+name: GreedyFK2Planner
+
+scale: 1.0
+
+greedy_type: 'all_frame_exp' # ['last_frame', 'all_frame', 'all_frame_exp']
+
+clip_grad_by_value:
+  min: -0.1
+  max: 0.1

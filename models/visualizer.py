@@ -14,6 +14,8 @@ from utils.visualize import frame2gif, render_prox_scene, render_scannet_path
 from utils.visualize import create_trimesh_nodes_path, create_trimesh_node
 from utils.handmodel import get_handmodel
 from utils.plotly_utils import plot_mesh
+from utils.rot6d import rot_to_orthod6d, robust_compute_rotation_matrix_from_ortho6d, random_rot
+from tqdm import tqdm
 
 VISUALIZER = Registry('Visualizer')
 
@@ -403,6 +405,91 @@ class GraspGenVisualizer():
                 cnt += 1
                 if cnt >= vis_cnt:
                     break
+
+@VISUALIZER.register()
+@torch.no_grad()
+class GraspGenURVisualizer():
+    def __init__(self, cfg: DictConfig) -> None:
+        """ Visual evaluation class for pose generation task.
+        Args:
+            cfg: visuzalizer configuration
+        """
+        self.ksample = cfg.ksample
+        self.hand_model = get_handmodel(batch_size=1, device='cuda')
+
+    def visualize(
+            self,
+            model: torch.nn.Module,
+            dataloader: torch.utils.data.DataLoader,
+            save_dir: str
+    ) -> None:
+        """ Visualize method
+        Args:
+            model: diffusion model
+            dataloader: test dataloader
+            save_dir: save directory of rendering images
+        """
+        model.eval()
+        device = model.device
+
+        os.makedirs(save_dir, exist_ok=True)
+        os.makedirs(os.path.join(save_dir, 'html'), exist_ok=True)
+        # save
+        pbar = tqdm(total=len(dataloader.dataset.split) * self.ksample)
+        object_pcds_dict = dataloader.dataset.scene_pcds
+        res = {'method': 'diffuser@w/o-opt',
+               'desc': 'w/o optimizer grasp pose generation',
+               'sample_qpos': {}}
+
+        # for syn training dataset
+        # train_obj_list_ds = ["contactdb+alarm_clock", "contactdb+banana", "contactdb+binoculars",
+        #                      "contactdb+cube_medium", "contactdb+mouse", "contactdb+piggy_bank",
+        #                      "contactdb+ps_controller", "contactdb+stapler", "contactdb+train",
+        #                      "ycb+toy_airplane"]
+
+        for object_name in dataloader.dataset._test_split:
+        # for object_name in train_obj_list_ds:
+            obj_pcd_can = torch.tensor(object_pcds_dict[object_name], device=device).unsqueeze(0).repeat(self.ksample, 1, 1)
+            obj_pcd_can = obj_pcd_can[:, :dataloader.dataset.num_points, :]
+            i_rot_list = []
+            for k_rot in range(self.ksample):
+                i_rot_list.append(random_rot(device))
+            i_rot = torch.stack(i_rot_list).to(torch.float64)
+            obj_pcd_rot = torch.matmul(i_rot, obj_pcd_can.transpose(1, 2)).transpose(1, 2)
+
+            # construct data
+            data = {'x': torch.randn(self.ksample, 27, device=device),
+                    'pos': obj_pcd_rot.to(device),
+                    'scene_rot_mat': i_rot,
+                    'scene_id': [object_name for i in range(self.ksample)],
+                    'cam_trans': [None for i in range(self.ksample)]}
+            outputs = model.sample(data, k=1).squeeze(1)[:, -1, :].to(torch.float64)
+            ## denormalization
+            if dataloader.dataset.normalize_x:
+                outputs[:, 3:] = dataloader.dataset.angle_denormalize(joint_angle=outputs[:, 3:].cpu()).cuda()
+            if dataloader.dataset.normalize_x_trans:
+                outputs[:, :3] = dataloader.dataset.trans_denormalize(global_trans=outputs[:, :3].cpu()).cuda()
+
+            id_6d_rot = torch.tensor([1., 0., 0., 0., 1., 0.], device=device).view(1, 6).repeat(self.ksample, 1).to(torch.float64)
+            outputs_3d_rot = rot_to_orthod6d(torch.bmm(i_rot, robust_compute_rotation_matrix_from_ortho6d(id_6d_rot)))
+            outputs[:, :3] = torch.bmm(i_rot, outputs[:, :3].unsqueeze(-1)).squeeze(-1)
+            outputs = torch.cat([outputs[:, :3], outputs_3d_rot, outputs[:, 3:]], dim=-1)
+
+            # visualization for checking
+            scene_id = data['scene_id'][0]
+            scene_dataset, scene_object = scene_id.split('+')
+            mesh_path = os.path.join('assets/object', scene_dataset, scene_object, f'{scene_object}.stl')
+            obj_mesh = trimesh.load(mesh_path)
+            for i in range(outputs.shape[0]):
+                self.hand_model.update_kinematics(q=outputs[i:i+1, :])
+                vis_data = [plot_mesh(obj_mesh, color='lightblue')]
+                vis_data += self.hand_model.get_plotly_data(opacity=1.0, color='pink')
+                save_path = os.path.join(save_dir, 'html', f'{scene_id}+sample-{i}.html')
+                fig = go.Figure(data=vis_data)
+                fig.write_html(save_path)
+                pbar.update(1)
+            res['sample_qpos'][object_name] = np.array(outputs.cpu().detach())
+        pickle.dump(res, open(os.path.join(save_dir, 'res_diffuser.pkl'), 'wb'))
 
 @VISUALIZER.register()
 @torch.no_grad()

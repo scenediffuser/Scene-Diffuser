@@ -38,7 +38,8 @@ class UNetModel(nn.Module):
         self.scene_model = create_scene_model(cfg.scene_model.name, **scene_model_args)
         ## load pretrained weights
         weight_path = cfg.scene_model.pretrained_weights_slurm if slurm else cfg.scene_model.pretrained_weights
-        self.scene_model.load_pretrained_weight(weigth_path=weight_path)
+        if weight_path is not None:
+            self.scene_model.load_pretrained_weight(weigth_path=weight_path)
         if cfg.freeze_scene_model:
             for p in self.scene_model.parameters():
                 p.requires_grad_(False)
@@ -143,6 +144,11 @@ class UNetModel(nn.Module):
             b = data['pos'].shape[0]
             pos = data['pos'].to(torch.float32)
             scene_feat = self.scene_model(pos).reshape(b, self.scene_model.num_groups, -1)
+        elif self.scene_model_name == 'PointNet2':
+            b = data['pos'].shape[0]
+            pos = data['pos'].to(torch.float32)
+            _, scene_feat_list = self.scene_model(pos)
+            scene_feat = scene_feat_list[-1].transpose(1, 2)
         else:
             raise Exception('Unexcepted scene model.')
 

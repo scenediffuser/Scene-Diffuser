@@ -2,16 +2,17 @@ name: GraspWithObject
 
 scale: 1.0
 
-palm_alignment: true
-palm_alignment_weight: 1.0
+collision: true
+collision_weight: 1.0
 clip_grad_by_value:
   min: -0.1
   max: 0.1
 
+asset_dir: ${task.dataset.asset_dir}
+asset_dir_slurm: ${task.dataset.asset_dir_slurm}
+
 batch_size: ${task.test.batch_size}
 modeling_keys: ${task.dataset.modeling_keys}
 
-
-
-
-
+normalize_x: ${task.dataset.normalize_x}
+normalize_x_trans: ${task.dataset.normalize_x_trans}

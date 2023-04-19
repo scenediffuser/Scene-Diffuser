@@ -9,11 +9,17 @@ from math import cos, sin
 from tqdm import tqdm
 from omegaconf import DictConfig
 from collections import defaultdict
+import json
+import pickle
+import copy
+import yaml
 
 from models.optimizer.utils import transform_verts
 from utils.registry import Registry
 from utils.misc import random_str
 from utils.visualize import create_trimesh_node, create_trimesh_nodes_path, render_scannet_path
+from envs.tasks.franka_panda import FrankaMotion_Player
+from isaacgym import gymapi, gymtorch, gymutil
 
 ENV = Registry('Env')
 
@@ -303,6 +309,242 @@ class MP3DPathPlanningEnvCore():
         """ Get trajectory length in batch
         """
         return self.trajectory_length
+
+class FK2PlanningEnvCore():
+    def __init__(self, data: Dict, scene_id: str, sims_per_step: int = 10,
+                 arrive_threshold: float = 0.3, max_trajectory_length: int = 500) -> None:
+        """ A Franka Forward kinematics planning environment
+
+        Args:
+            data: dataloader provided data dict
+            scene_id: the scene id of data
+            max_trajectory_length: max length of the trajectory
+        """
+        self.scene_id = scene_id
+        self.device = data['start'].device
+        self.batch = data['start'].shape[0]
+        self.max_trajectory_length = max_trajectory_length
+        self.arrive_threshold = arrive_threshold
+        self.sims_per_step = sims_per_step
+        #
+        # self.angle_normalize = angle_normalize
+        # self.angle_denormalize = angle_denormalize
+
+        self.state = data['start'].squeeze(1)
+        self.target = data['target']
+
+        self.end = torch.zeros(self.batch, dtype=bool, device=self.device)
+        self.trajectory = [[self.state[i].clone().cpu()] for i in range(self.batch)]
+        self.franka_isaac_env = None
+        self.initial_qpos = self.state
+        self.isaac_config = yaml.safe_load(open("envs/tasks/franka_panda.yaml"))
+        self.trajectory_length = torch.ones(self.batch, dtype=torch.int32, device=self.device) * max_trajectory_length
+        self.init_isaac_env(initial_qpos=self.initial_qpos)
+
+    def get_sim_param(self):
+        # initialize sim
+        sim_params = gymapi.SimParams()
+        sim_params.dt = 1. / 60.
+        sim_params.num_client_threads = 0
+        sim_params.physx.solver_type = 1
+        sim_params.physx.num_position_iterations = 4
+        sim_params.physx.num_velocity_iterations = 0
+        sim_params.physx.num_threads = 4
+        sim_params.physx.use_gpu = True
+        sim_params.physx.num_subscenes = 0
+        sim_params.physx.max_gpu_contact_pairs = 8 * 1024 * 1024
+        sim_params.use_gpu_pipeline = True
+        sim_params.physx.use_gpu = True
+        sim_params.physx.num_threads = 0
+        return sim_params
+
+    def __del__(self):
+        del self.franka_isaac_env
+
+    def init_isaac_env(self, initial_qpos: torch.Tensor):
+        self.initial_qpos = initial_qpos.detach().clone()
+        sim_params = self.get_sim_param()
+        self.franka_isaac_env = FrankaMotion_Player(config=self.isaac_config, sim_params=sim_params,
+                                                    physics_engine=gymapi.SIM_PHYSX,
+                                                    device_type=self.device, device_id=0, headless=False,
+                                                    scene_id=self.scene_id, init_qpos=initial_qpos)
+
+    def step(self, step: int, target_qpos: torch.Tensor):
+        ## 1. step target qpos
+        next_state = self.step_target_qpos(target_qpos)
+        ## 2. compute next state
+        self.state[~self.end, ...] = next_state[~self.end, ...]
+        for i in range(self.batch):
+            self.trajectory[i].append(self.target[i].clone().cpu() if self.end[i] else self.state[i].clone().cpu())
+        ## 3. check arriving the target position
+        dist = torch.norm(self.state - self.target, dim=-1)
+        arrived = dist < self.arrive_threshold
+
+        # print(self.end)
+        self.trajectory_length[torch.logical_and(arrived, ~self.end)] = step
+        self.end = torch.logical_or(self.end, arrived)
+
+    def get_trajectories(self):
+        return self.trajectory
+
+    def step_target_qpos(self, target_qpos: torch.Tensor):
+        for i in range(self.sims_per_step):
+            self.franka_isaac_env.step_qpos(qpos=target_qpos)
+        next_cur_qpos = self.get_current_qpos()
+        return next_cur_qpos
+
+    def get_current_qpos(self):
+        cur_qpos = self.franka_isaac_env.get_cur_qpos()
+        return cur_qpos.squeeze(1)
+
+    def all_end(self) -> bool:
+        """ If all case is end
+        Returns:
+            A bool
+        """
+        return torch.all(self.end)
+
+@ENV.register()
+@torch.no_grad()
+class FK2PlanningEnvWrapper():
+    def __init__(self, cfg: DictConfig) -> None:
+        """ FK2Planning environment class for path planning task.
+
+        Args:
+            cfg:
+        """
+        self.max_sample_each_step = cfg.max_sample_each_step
+        self.max_trajectory_length = cfg.max_trajectory_length
+        self.arrive_threshold = cfg.arrive_threshold
+        self.eval_case_num_per_scene = cfg.eval_case_num_per_scene
+        self.sims_per_step = cfg.sims_per_step
+        self.arrive_threshold = cfg.arrive_threshold
+
+        self.angle_normalize = None
+        self.angle_denormalize = None
+
+    def run(self,
+            model: torch.nn.Module,
+            dataloader: torch.utils.data.DataLoader,
+            save_dir: str
+    ) -> None:
+        """ Planning within the environment
+        
+        Args:
+            model: diffusion model
+            dataloader: test dataloader
+            save_dir: save_directory of result
+        """
+        # save_record_path = os.path.join('/home/puhao/dev/SceneDiffuser', 'succ_record.json')
+        model.eval()
+        device = model.device
+
+        self.angle_normalize = dataloader.dataset.angle_normalize
+        self.angle_denormalize = dataloader.dataset.angle_denormalize
+        # task_name = 'pla-0.1@demo'
+        # res_saver_path = os.path.join('outputs', task_name, 'metrics.json')
+        # replay_saver_path = os.path.join('outputs', task_name, 'replay.pkl')
+
+        replay_res = {}
+
+        # succ_scene_record = json.load(open(save_record_path, 'r'))
+        res = defaultdict(list)
+        res['succ'] = []
+        res['eval_cnt'] = 0
+        res['max_trajectory_length'] = self.max_trajectory_length
+        res['arrive_threshold'] = self.arrive_threshold
+        res['scene_list'] = []
+        # if os.path.exists(res_saver_path):
+        #     with open(res_saver_path, 'r') as fp:
+        #         res = json.load(fp)
+        # else:
+        #     with open(res_saver_path, 'w') as fp:
+        #         json.dump(res, fp)
+        for i, data in enumerate(dataloader):
+            for key in data:
+                if torch.is_tensor(data[key]):
+                    data[key] = data[key].to(device)
+
+            i_scene_id = data['scene_id'][0]
+            i_target_qpos = np.array(data['target'].cpu())
+            # if data['scene_id'][0] in succ_scene_record.keys():
+            #     continue
+            if data['scene_id'][0] in res['scene_list']:
+                continue
+            succ_record_list = []
+            ## de-normalize for env input
+            if dataloader.dataset.normalize_x:
+                data['x'] = self.angle_denormalize(data['x'].cpu()).cuda()
+                data['target'] = self.angle_denormalize(data['target'].cpu()).cuda()
+                data['start'] = self.angle_denormalize(data['start'].cpu()).cuda()
+
+            env = FK2PlanningEnvCore(
+                data=copy.deepcopy(data),
+                scene_id=data['scene_id'][0],
+                arrive_threshold=self.arrive_threshold,
+                sims_per_step=self.sims_per_step,
+                max_trajectory_length=self.max_trajectory_length
+            )
+
+            ## re-normalize for model input
+            if dataloader.dataset.normalize_x:
+                data['x'] = self.angle_normalize(data['x'].cpu()).cuda()
+                data['target'] = self.angle_normalize(data['target'].cpu()).cuda()
+                data['start'] = self.angle_normalize(data['start'].cpu()).cuda()
+
+            for j in tqdm(range(self.max_trajectory_length)):
+                outputs = model.sample(data, k=self.max_sample_each_step)
+                # assert torch.sum(outputs[:, 0:1, -1, 0, :] - env.state) < 1e-6
+                assert (outputs.shape[1] == 1)
+
+                pred_next_qpos = outputs[:, 0, -1, 10, :]
+                # # todo: l2 loss
+                # pred_next_qpos = data['target']
+
+                if dataloader.dataset.normalize_x:
+                    pred_next_qpos = self.angle_denormalize(pred_next_qpos.cpu()).cuda()
+                env.step(j + 1, pred_next_qpos)
+
+                data['start'] = env.state.clone()
+                if dataloader.dataset.normalize_x:
+                    data['start'] = self.angle_normalize(data['start'].cpu()).cuda()
+                    data['start'] = data['start'].unsqueeze(1)
+                if env.all_end():
+                    break
+            print()
+            i_trajectories = env.get_trajectories()
+            i_trajectories = np.array([np.stack(case) for case in i_trajectories])
+            # save replayer recorder
+            replay_res[i_scene_id] = {'sample_trajs': i_trajectories,
+                                      'target_qpos': i_target_qpos}
+
+            for j in range(env.batch):
+                succ_record_list.append(bool(env.end[j].cpu()))
+                res['scene_list'].append(data['scene_id'][0])
+                res['succ'].append(bool(env.end[j].cpu()))
+                res['length'].append(float(env.trajectory_length[j]))
+            # print(f'[{i}/{200}]')
+            # succ_scene_record[data['scene_id'][0]] = succ_record_list
+            res['eval_cnt'] += env.batch
+
+            # json.dump(succ_scene_record, open(save_record_path, 'w'))
+
+            del env
+            # with open(res_saver_path, 'w') as fp:
+            #     json.dump(res, fp)
+
+        # with open(replay_saver_path, 'wb') as fp:
+        #     pickle.dump(replay_res, fp)
+        for key in ['succ', 'length']:
+            res[key+'_average'] = sum(res[key]) / len(res[key])
+
+        ## save quantitative results
+        save_path = os.path.join(save_dir, 'metrics.json')
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        with open(save_path, 'w') as fp:
+            json.dump(res, fp)
+        # with open(res_saver_path, 'w') as fp:
+        #     json.dump(res, fp)
 
 @ENV.register()
 @torch.no_grad()

@@ -31,6 +31,10 @@ def compute_model_dim(cfg: DictConfig) -> int:
         return 2
     elif cfg.name == 'grasp_gen':
         return 3 + 6 + 24
+    elif cfg.name == 'grasp_gen_ur':
+        return 3 + 24
+    elif cfg.name == 'franka_planning':
+        return 7
     else:
         raise Exception('Unsupported task.')
 

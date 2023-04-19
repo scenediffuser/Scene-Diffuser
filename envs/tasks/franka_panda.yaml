@@ -1,0 +1,49 @@
+task:
+  useStage: False
+  useSlider: False
+  useGroundTruth: False
+
+env:
+  numScenes: 200
+  asset:
+    assetRoot: "envs/assets"
+  env_name: "franka"
+  envSpacing: 1.5
+  numEnvs: 6
+  driveMode: "pos"
+  enableCameraSensors: False
+
+sim:
+  substeps: 2
+  physx:
+    num_threads: 4
+    solver_type: 1  # 0: pgs, 1: tgs
+    num_position_iterations: 8
+    num_velocity_iterations: 0
+    contact_offset: 0.002
+    rest_offset: 0.0
+    bounce_threshold_velocity: 0.2
+    max_depenetration_velocity: 1000.0
+    default_buffer_size_multiplier: 5.0
+  flex:
+    num_outer_iterations: 5
+    num_inner_iterations: 20
+    warm_start: 0.8
+    relaxation: 0.75
+
+object:
+  density: 1000
+  damping:
+    linear: 1
+    angular: 1
+  shape:
+    friction: 1.
+
+agent:
+  density: 1000
+  dof_props:
+    stiffness: 100.0
+    velocity: 1.
+    damping: 100.0
+  shape:
+    friction: 1.

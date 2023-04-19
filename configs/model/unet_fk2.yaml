@@ -14,11 +14,10 @@ context_dim: 512
 use_position_embedding: false # for input x
 
 scene_model:
-  name: PointNet2
+  name: PointTransformer
   use_color: ${task.dataset.use_color}
   use_normal: ${task.dataset.use_normal}
   num_points: ${task.dataset.num_points}
-  num_tokens: 8
   pretrained_weights: null
   pretrained_weights_slurm: null
 freeze_scene_model: false

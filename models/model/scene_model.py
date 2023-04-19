@@ -4,6 +4,7 @@ from omegaconf import DictConfig
 from utils.registry import Registry
 from models.model.pointtransformer import pointtransformer_enc_repro
 from models.model.pointnet import pointnet_enc_repro
+from models.model.pointnet2.pointnet2_semseg import pointnet2_enc_repro
 
 
 SCENEMODEL = Registry('SceneModel')
@@ -26,3 +27,7 @@ def PointTransformer(**kwargs):
 @SCENEMODEL.register()
 def PointNet(**kwargs):
     return pointnet_enc_repro(**kwargs)
+
+@SCENEMODEL.register()
+def PointNet2(**kwargs):
+    return pointnet2_enc_repro(**kwargs)

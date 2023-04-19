@@ -177,7 +177,7 @@ class NumpyToTensorPath(object):
     def __call__(self, data: Dict, *args: List, **kwargs: Dict) -> Dict:
         for key in data.keys():
             if key in ['x', 'start', 'target', 'pos', 'feat', 's_grid_map', 's_grid_dim', 's_grid_min', 's_grid_max'] and not torch.is_tensor(data[key]):
-                data[key] = torch.tensor(np.array(data[key]))
+                data[key] = torch.tensor(np.array(data[key]), dtype=torch.float32)
         
         return data
 
