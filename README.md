@@ -1,6 +1,9 @@
 # Diffusion-based Generation, Optimization, and Planning in 3D Scenes
 
 <p align="left">
+    <a href='https://scenediffuser.github.io/paper.pdf'>
+      <img src='https://img.shields.io/badge/Paper-PDF-red?style=plastic&logo=adobeacrobatreader&logoColor=red' alt='Paper PDF'>
+    </a>
     <a href='https://arxiv.org/abs/2301.06015'>
       <img src='https://img.shields.io/badge/Paper-arXiv-green?style=plastic&logo=arXiv&logoColor=green' alt='Paper arXiv'>
     </a>
@@ -28,6 +31,7 @@ This repository is the official implementation of paper "Diffusion-based Generat
 
 We introduce SceneDiffuser, a conditional generative model for 3D scene understanding. SceneDiffuser provides a unified model for solving scene-conditioned generation, optimization, and planning. In contrast to prior work, SceneDiffuser is intrinsically scene-aware, physics-based, and goal-oriented.
 
+[Paper](https://scenediffuser.github.io/paper.pdf) |
 [arXiv](https://arxiv.org/abs/2301.06015) |
 [Project](https://scenediffuser.github.io/) |
 [HuggingFace Demo](https://huggingface.co/spaces/SceneDiffuser/SceneDiffuserDemo) |
@@ -41,23 +45,33 @@ We introduce SceneDiffuser, a conditional generative model for 3D scene understa
 
 We introduce SceneDiffuser, a conditional generative model for 3D scene understanding. SceneDiffuser provides a unified model for solving scene-conditioned generation, optimization, and planning. In contrast to prior works, SceneDiffuser is intrinsically scene-aware, physics-based, and goal-oriented. With an iterative sampling strategy, SceneDiffuser jointly formulates the scene-aware generation, physics-based optimization, and goal-oriented planning via a diffusion-based denoising process in a fully differentiable fashion. Such a design alleviates the discrepancies among different modules and the posterior collapse of previous scene-conditioned generative models. We evaluate SceneDiffuser with various 3D scene understanding tasks, including human pose and motion generation, dexterous grasp generation, path planning for 3D navigation, and motion planning for robot arms. The results show significant improvements compared with previous models, demonstrating the tremendous potential of SceneDiffuser for the broad community of 3D scene understanding.
 
+## News
+
+- [ 2023.04 ] We release the code for grasp generation and arm motion planning!
+
 ## Setup
 
-1. Create a new `conda` environemnt and activate it
+1. Create a new `conda` environemnt and activate it.
 
     ```bash
     conda create -n 3d python=3.8
     conda activate 3d
     ```
 
-2. Install dependent libraries with `pip`
+2. Install dependent libraries with `pip`.
 
     ```bash
     pip install -r pre-requirements.txt
     pip install -r requirements.txt
     ```
 
-    - We use `pytorch1.11` and `cuda11.3`, modify `pre-requirements.txt` to install [other versions](https://pytorch.org/get-started/previous-versions/) of `pytorch`
+    - We use `pytorch1.11` and `cuda11.3`, modify `pre-requirements.txt` to install [other versions](https://pytorch.org/get-started/previous-versions/) of `pytorch`.
+
+3. Install [Isaac Gym](https://developer.nvidia.com/isaac-gym) and install [pointnet2](https://github.com/daveredrum/Pointnet2.ScanNet) by executing the following command (optional for grasp generation and arm motion planning).
+
+    ```bash
+    pip install git+https://github.com/daveredrum/Pointnet2.ScanNet.git#subdirectory=pointnet2
+    ```
 
 ## Data & Checkpoints
 
@@ -77,10 +91,13 @@ Download our [pre-trained model](https://drive.google.com/drive/folders/1CKJER3C
 
 task|checkpoints|desc
 -|-|-
+Pretrained Point Transformer|2022-04-13_18-29-56_POINTTRANS_C_32768|
 Pose Generation|2022-11-09_11-22-52_PoseGen_ddm4_lr1e-4_ep100|
 Motion Generation|2022-11-09_12-54-50_MotionGen_ddm_T200_lr1e-4_ep300|w/o start position
 Motion Generation|2022-11-09_14-28-12_MotionGen_ddm_T200_lr1e-4_ep300_obser|w/ start position
 Path Planning|2022-11-25_20-57-28_Path_ddm4_LR1e-4_E100_REL|
+Grasp Generation|2022-11-15_18-07-50_GPUR_l1_pn2_T100|
+Arm Motion Planning|2022-11-11_14-28-30_FK2Plan_ptr_T30_4|denoising step is 30
 
 
 ## Task-1: Human Pose Generation in 3D Scenes
@@ -155,7 +172,39 @@ bash scripts/motion_gen/sample.sh ${CKPT} [OPT]
 
 ## Task-3: Dexterous Grasp Generation for 3D Objects
 
-coming soon.
+To run this code, you first need to change the git branch to `obj` by execute
+
+```bash
+git checkout obj
+```
+
+Make sure you have installed [Isaac Gym](https://developer.nvidia.com/isaac-gym) and [pointnet2](https://github.com/daveredrum/Pointnet2.ScanNet). See [Setup](#setup) section.
+
+### Train
+
+- Train with single gpu (one gpu is enough)
+
+    ```bash
+    bash scripts/grasp_gen_ur/train.sh ${EXP_NAME}
+    ```
+
+### Sample (Qualitative Visualization)
+
+```bash
+bash scripts/grasp_gen_ur/sample.sh ${CKPT} [OPT]
+# e.g., bash scripts/grasp_gen_ur/sample.sh ./outputs/2022-11-15_18-07-50_GPUR_l1_pn2_T100/ OPT
+```
+
+- `[OPT]` is optional for optimization-guided sampling.
+
+### Test (Quantitative Evaluation)
+
+You first need to run `scripts/grasp_gen_ur/sample.sh` to sample some results. Then we will compute quantitative metrics with these sampled results.
+
+```bash
+bash scripts/grasp_gen_ur/test.sh ${EVAL_DIR} ${DATASET_DIR}
+# e.g., bash scripts/grasp_gen_ur/test.sh outputs/2022-11-15_18-07-50_GPUR_l1_pn2_T100/eval/final/2023-04-20_13-06-44 YOUR_PATH/data/MultiDex_UR
+```
 
 ## Task-4: Path Planning in 3D Scenes
 
@@ -177,6 +226,7 @@ coming soon.
 
 ```bash
 bash scripts/path_planning/plan.sh ${CKPT}
+# e.g., bash scripts/path_planning/plan.sh ./outputs/2022-11-25_20-57-28_Path_ddm4_LR1e-4_E100_REL/
 ```
 
 ### Sample (Qualitative Visualization)
@@ -192,7 +242,34 @@ bash scripts/path_planning/sample.sh ${CKPT} [OPT] [PLA]
 
 ## Task-5: Motion Planning for Robot Arms
 
-coming soon.
+To run this code, you first need to change the git branch to `obj` by execute
+
+```bash
+git checkout obj
+```
+
+Make sure you have installed [Isaac Gym](https://developer.nvidia.com/isaac-gym) and [pointnet2](https://github.com/daveredrum/Pointnet2.ScanNet). See [Setup](#setup) section.
+
+### Train
+
+- Train with single gpu
+
+    ```bash
+    bash scripts/franka_planning/train.sh ${EXP_NAME}
+    ```
+
+- Train with 4 GPUs (modify `scripts/path_planning/train_ddm.sh` to specify the visible GPUs)
+
+    ```bash
+    bash scripts/franka_planning/train_ddm.sh ${EXP_NAME}
+    ```
+
+### Test (Quantitative Evaluation)
+
+```bash
+bash scripts/franka_planning/plan.sh ${CKPT}
+# e.g., bash scripts/franka_planning/plan.sh outputs/2022-11-11_14-28-30_FK2Plan_ptr_T30_4/
+```
 
 ## Citation
 

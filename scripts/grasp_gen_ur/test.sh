@@ -8,4 +8,4 @@ DATASET_DIR=$2
 python ./scripts/grasp_gen_ur/test.py --eval_dir=${EVAL_DIR} \
                                       --dataset_dir=${DATASET_DIR} \
                                       --stability_config='envs/tasks/grasp_test_force.yaml' \
-                                      --seed=42 \
+                                      --seed=42
