@@ -172,7 +172,7 @@ bash scripts/motion_gen/sample.sh ${CKPT} [OPT]
 
 ## Task-3: Dexterous Grasp Generation for 3D Objects
 
-To run this code, you first need to change the git branch to `obj` by execute
+To run this code, you first need to change the git branch to `obj` by executing
 
 ```bash
 git checkout obj
@@ -242,7 +242,7 @@ bash scripts/path_planning/sample.sh ${CKPT} [OPT] [PLA]
 
 ## Task-5: Motion Planning for Robot Arms
 
-To run this code, you first need to change the git branch to `obj` by execute
+To run this code, you first need to change the git branch to `obj` by executing
 
 ```bash
 git checkout obj
