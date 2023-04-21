@@ -1,2 +1,10 @@
 __pycache__
 outputs/
+
+assets/franka_description/
+assets/object/
+assets/urdf/
+
+envs/assets/franka_description/
+envs/assets/scene_description/
+envs/assets/movable_hand_urdf/
