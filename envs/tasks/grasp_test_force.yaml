@@ -1,0 +1,92 @@
+task:
+  useStage: False
+  useSlider: False
+  useGroundTruth: False
+
+env:
+  env_name: "grasp"
+  numTrain: 6
+  numObservations: 50
+  numActions: 9
+  envSpacing: 1.0
+  maxEpisodeLength: 256
+  actionSpeedScale: 20
+  enableDebugVis: False
+
+  contactBufferSize: 9999
+  contactMovingThreshold: 0.1
+
+  pointFeatureDim: 512
+  objPointDownsampleNum: 2048
+  handPointDownsampleNum: 64
+  pointNetLR: 0.0001
+  visualizePointcloud: False
+
+  enableCameraSensors: False
+  depth_bar: 10
+  map_dis_bar: 0.1
+  moving_pc_mode: False
+
+  driveMode: "pos"
+  clipObservations: 5.0
+  clipActions: 1.0
+
+  asset:
+    assetRoot: "envs/assets"
+    AssetNumTrain: 1
+    trainObjAssets:
+      0:
+        name: 0
+        path: object_to_grasp/apple/apple.urdf
+      
+sim:
+  substeps: 2
+  physx:
+    num_threads: 4
+    solver_type: 1  # 0: pgs, 1: tgs
+    num_position_iterations: 8
+    num_velocity_iterations: 0
+    contact_offset: 0.002
+    rest_offset: 0.0
+    bounce_threshold_velocity: 0.2
+    max_depenetration_velocity: 1000.0
+    default_buffer_size_multiplier: 5.0
+  flex:
+    num_outer_iterations: 5
+    num_inner_iterations: 20
+    warm_start: 0.8
+    relaxation: 0.75
+
+object:
+  density: 1000
+  damping:
+    linear: 10
+    angular: 100
+  shape:
+    friction: 2.
+
+agent:
+  density: 1000
+  dof_props:
+    stiffness: 400.0
+    velocity: 0.8
+    damping: 400.0
+  shape:
+    friction: 2.
+
+eval_policy:
+  init:
+    steps: 200
+  dynamic:
+    directions:
+      0: [1., 0., 0.]
+      1: [-1., 0., 0.]
+      2: [0., 1., 0.]
+      3: [0., -1., 0.]
+      4: [0., 0., 1.]
+      5: [0., 0., -1.]
+    num_steps: 50
+    magnitude_per_volume: 500.
+  error:
+    distance: 0.02
+
