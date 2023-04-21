@@ -48,7 +48,7 @@ class HandModel:
             raise NotImplementedError
 
         for i_link, link in enumerate(visual.links):
-            print(f"Processing link #{i_link}: {link.name}")
+            # print(f"Processing link #{i_link}: {link.name}")
             # load mesh
             if len(link.visuals) == 0:
                 continue
@@ -184,7 +184,7 @@ class HandModel:
             surface_points.append(
                 torch.matmul(trans_matrix, self.surface_points[link_name].transpose(1, 2)).transpose(1, 2)[..., :3])
         surface_points = torch.cat(surface_points, 1)
-        surface_points = torch.matmul(self.global_rotation, surface_points.transpose(1, 2)).transpose(1,
+        surface_points = torch.matmul(self.global_rotation.float(), surface_points.transpose(1, 2)).transpose(1,
                                                                                                       2) + self.global_translation.unsqueeze(
             1)
         # if downsample:
@@ -294,6 +294,39 @@ def get_handmodel(batch_size, device, hand_scale=1., robot='shadowhand'):
     meshes_path = urdf_assets_meta['meshes_path'][robot]
     hand_model = HandModel(robot, urdf_path, meshes_path, batch_size=batch_size, device=device, hand_scale=hand_scale)
     return hand_model
+
+
+def compute_collision(obj_pcd_nor: torch.Tensor, hand_pcd: torch.Tensor):
+    """
+    :param obj_pcd_nor: N_obj x 6
+    :param hand_surface_points: B x N_hand x 3
+    :return:
+    """
+    b = hand_pcd.shape[0]
+    n_obj = obj_pcd_nor.shape[0]
+    n_hand = hand_pcd.shape[1]
+
+    obj_pcd = obj_pcd_nor[:, :3]
+    obj_nor = obj_pcd_nor[:, 3:6]
+
+    # batch the obj pcd
+    batch_obj_pcd = obj_pcd.unsqueeze(0).repeat(b, 1, 1).view(b, 1, n_obj, 3)
+    batch_obj_pcd = batch_obj_pcd.repeat(1, n_hand, 1, 1)
+    # batch the hand pcd
+    batch_hand_pcd = hand_pcd.view(b, n_hand, 1, 3).repeat(1, 1, n_obj, 1)
+    # compute the pair wise dist
+    hand_obj_dist = (batch_obj_pcd - batch_hand_pcd).norm(dim=3)
+    hand_obj_dist, hand_obj_indices = hand_obj_dist.min(dim=2)
+    # gather the obj points and normals w.r.t. hand points
+    hand_obj_points = torch.stack([obj_pcd[x, :] for x in hand_obj_indices], dim=0)
+    hand_obj_normals = torch.stack([obj_nor[x, :] for x in hand_obj_indices], dim=0)
+    # compute the signs
+    hand_obj_signs = ((hand_obj_points - hand_pcd) * hand_obj_normals).sum(dim=2)
+    hand_obj_signs = (hand_obj_signs > 0.).float()
+    # signs dot dist to compute collision value
+    collision_value = (hand_obj_signs * hand_obj_dist).max(dim=1).values
+    # collision_value = (hand_obj_signs * hand_obj_dist).mean(dim=1)
+    return collision_value
 
 
 if __name__ == '__main__':
