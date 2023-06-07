@@ -287,3 +287,11 @@ If you find our project useful, please consider citing us:
 ## Acknowledgments
 
 Some codes are borrowed from [stable-diffusion](https://github.com/CompVis/stable-diffusion), [PSI-release](https://github.com/yz-cnsdqz/PSI-release), [Pointnet2.ScanNet](https://github.com/daveredrum/Pointnet2.ScanNet), [point-transformer](https://github.com/POSTECH-CVLab/point-transformer), and [diffuser](https://github.com/jannerm/diffuser).
+
+### License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for more details. The following datasets are used in this project and are subject to their respective licenses:
+
+- PROX is under the [Software Copyright License for non-commercial scientific research purposes](https://prox.is.tue.mpg.de/license.html).
+- LEMO is under the [MIT License](https://github.com/sanweiliti/LEMO/blob/main/LICENSE).
+- ScanNet V2 is under the [ScanNet Terms of Use](http://kaldir.vc.in.tum.de/scannet/ScanNet_TOS.pdf).
