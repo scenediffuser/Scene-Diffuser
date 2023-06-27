@@ -286,7 +286,7 @@ If you find our project useful, please consider citing us:
 
 ## Acknowledgments
 
-Some codes are borrowed from [stable-diffusion](https://github.com/CompVis/stable-diffusion), [PSI-release](https://github.com/yz-cnsdqz/PSI-release), [Pointnet2.ScanNet](https://github.com/daveredrum/Pointnet2.ScanNet), [point-transformer](https://github.com/POSTECH-CVLab/point-transformer), and [diffuser](https://github.com/jannerm/diffuser).
+Some codes are borrowed from [latent-diffusion](https://github.com/CompVis/latent-diffusion), [PSI-release](https://github.com/yz-cnsdqz/PSI-release), [Pointnet2.ScanNet](https://github.com/daveredrum/Pointnet2.ScanNet), [point-transformer](https://github.com/POSTECH-CVLab/point-transformer), and [diffuser](https://github.com/jannerm/diffuser).
 
 ### License
 
